@@ -86,6 +86,11 @@ void ParticleContact::resolveVelocity(float duration)
     }
 }
 
+void ParticleContact::resolveAngularVelocity(float duration) {
+	// Check if angular veolcity needs to be resolved.
+	
+}
+
 void ParticleContact::resolveInterpenetration(){
 	// If the objects aren't penetrating, skip.
 	if (penetration <= 0) return;

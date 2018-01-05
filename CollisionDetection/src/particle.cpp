@@ -12,20 +12,31 @@ void Particle::integrate(float duration)
    if (inverseMass <= 0.0f) return;
 
 	assert(duration > 0.0);
+	// update position based on linear velocity
 	position.addScaledVector(velocity, duration);
+	// update orientation based on angular velocity
+	orientation += angularVelocity * duration;
 
-	// Work out the acceleration from the force
+	// Work out the linear acceleration from force
     Vector2 resultingAcc = acceleration;
     resultingAcc.addScaledVector(forceAccum, inverseMass);
 
-	// Update linear velocity from the acceleration.
+	// Work out angular acceleration from force
+	float angularAcc = angularAcceleration;
+	angularAcc += torqueAccum;
+
+	// Update linear velocity from the acceleration and impulse.
     velocity.addScaledVector(resultingAcc, duration);
+
+	// Update angular velocity from impulse
+	angularVelocity += angularAcc * duration;
 
 	// Impose drag.
 	velocity *= pow(damping, duration);
+	angularVelocity *= pow(angularDamping, duration);
 
-	// Clear accumulated forces now they have been integrated.
-    clearAccumulator();
+	// Clear accumulated forces and torques now they have been integrated.
+    clearAccumulators();
 }
 
 void Particle::setMass(const float mass)
@@ -67,6 +78,14 @@ void Particle::setDamping(const float damping)
 float Particle::getDamping() const
 {
     return damping;
+}
+
+void Particle::setAngularDamping(const float damping) {
+	angularDamping = damping;
+}
+
+float Particle::getAngularDamping() const {
+	return angularDamping;
 }
 
 void Particle::setPosition(const float x, const float y)
@@ -123,11 +142,18 @@ void Particle::getVelocity(Vector2 *velocity) const
     *velocity = Particle::velocity;
 }
 
+void Particle::setAngularVelocity(const float &velocity) {
+	Particle::angularVelocity = velocity;
+}
+
+float Particle::getAngularVelocity() const {
+	return angularVelocity;
+}
+
 void Particle::setAcceleration(const Vector2 &acceleration)
 {
     Particle::acceleration = acceleration;
 }
-
 
 void Particle::setAcceleration(const float x, const float y)
 {
@@ -140,10 +166,26 @@ Vector2 Particle::getAcceleration() const
     return acceleration;
 }
 
+void Particle::setAngularAcceleration(const float &acceleration) {
+	angularAcceleration = acceleration;
+}
 
-void Particle::clearAccumulator()
+float Particle::getAngularAcceleration() const {
+	return angularAcceleration;
+}
+
+void Particle::setOrientation(const float &orientation) {
+	Particle::orientation = orientation;
+}
+
+float Particle::getOrientation() const {
+	return orientation;
+}
+
+void Particle::clearAccumulators()
 {
     forceAccum.clear();
+	torqueAccum = 0;
 }
 
 void Particle::addForce(const Vector2 &force)
@@ -151,3 +193,6 @@ void Particle::addForce(const Vector2 &force)
     forceAccum += force;
 }
 
+void Particle::addTorque(const float &torque) {
+	torqueAccum += torque;
+}

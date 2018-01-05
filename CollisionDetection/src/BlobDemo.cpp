@@ -17,7 +17,7 @@
 // Number of platforms in environment (doesn't include border platforms)
 #define numPlatforms 0 
 // Number of blobs to add to the environment.
-#define numBlobs 6
+#define numBlobs 2
 
 
 // Definition of acceleration due to gravity
@@ -85,6 +85,7 @@ unsigned Sphere::addContact(ParticleContact* contact, unsigned limit) const{
 			contact->particle[1] = (*it);
 			// Calculate and populate contact structure penetration value.
 			contact->penetration = (radius + candidateRadius - size);
+			contact->contactPoint = position + dist * (float)0.5;
 
 			// Increment number of used contacts
 			used++;	
@@ -96,7 +97,7 @@ unsigned Sphere::addContact(ParticleContact* contact, unsigned limit) const{
 }
 
 /**
- * Platforms are two dimensional: lines on which the 
+ * Platforms are two dimensional lines on which 
  * particles can rest. Platforms are also contact generators for the physics.
  */
 
@@ -195,7 +196,6 @@ unsigned Platform::addContact(ParticleContact *contact,
 
 class BlobDemo : public Application
 {
-    //Particle *blob;
 	Particle *blobs;
 
     Platform *platforms;
@@ -275,10 +275,10 @@ BlobDemo::BlobDemo():world(6, 8)
 	spheres = new Sphere[numBlobs];
 
 	// Make blobs
-	float offset = 15.0f;
 
 	float mass = 1.0f;
-	float radius = 8.0f;
+	float radius = 4.0f;
+	float offset = radius + 1.0f;
 
 	for (int i = 0; i < numBlobs; i++){
 		blobs[i].setPosition(-80.0f+offset, 2.0f);
@@ -286,12 +286,15 @@ BlobDemo::BlobDemo():world(6, 8)
 		// Use damping to simulate drag force (cheaper
 		// than calculating a force)
 		blobs[i].setDamping(0.8f);
+		blobs[i].setAngularDamping(0.8f);
 		// Apply acceleration due to gravity directly
 		// (This could be added as a force)
 		blobs[i].setAcceleration(Vector2::GRAVITY * 20.0f);
+		blobs[i].setAngularAcceleration(0.7f);
 		blobs[i].setMass(mass); // 1 kg
 		blobs[i].setRadius(radius);
-		blobs[i].clearAccumulator();
+		blobs[i].setOrientation(0);
+		blobs[i].clearAccumulators();
 
 		// Set position and radius for this blob's contact generator
 		//spheres[i].position = blobs[i].getPosition();
@@ -361,10 +364,18 @@ void BlobDemo::display()
    for (int i = 0; i < numBlobs; i++){
 	   glColor3f(r, g, b);
 	   const Vector2 &p = blobs[i].getPosition();
+	   // Convert orientation to degrees and store it
+	   const float &orientation = blobs[i].getOrientation() * 180/3.1459;
 	   glPushMatrix();
+
+	   // Position the sphere
 	   glTranslatef(p.x, p.y, 0);
+	   // Apply rotation about the z axis
+	   glRotatef(orientation, 0, 0, 1.0f);
+	   // Draw the sphere
 	   glutSolidSphere(blobs[i].getRadius(), 12, 12);
 	   glPopMatrix();
+
 	   if (r != 0){
 		   r = 0;
 		   g = 1;
