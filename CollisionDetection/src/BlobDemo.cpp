@@ -17,7 +17,7 @@
 // Number of platforms in environment (doesn't include border platforms)
 #define numPlatforms 0 
 // Number of blobs to add to the environment.
-#define numBlobs 2
+#define numBlobs 1
 
 
 // Definition of acceleration due to gravity
@@ -277,12 +277,12 @@ BlobDemo::BlobDemo():world(6, 8)
 	// Make blobs
 
 	float mass = 1.0f;
-	float radius = 4.0f;
+	float radius = 9.0f;
 	float offset = radius + 1.0f;
 
 	for (int i = 0; i < numBlobs; i++){
 		blobs[i].setPosition(-80.0f+offset, 2.0f);
-		blobs[i].setVelocity(80.0f, 0.0f);
+		blobs[i].setVelocity(0.0f, 0.0f);
 		// Use damping to simulate drag force (cheaper
 		// than calculating a force)
 		blobs[i].setDamping(0.8f);
@@ -290,7 +290,7 @@ BlobDemo::BlobDemo():world(6, 8)
 		// Apply acceleration due to gravity directly
 		// (This could be added as a force)
 		blobs[i].setAcceleration(Vector2::GRAVITY * 20.0f);
-		blobs[i].setAngularAcceleration(0.7f);
+		blobs[i].setAngularAcceleration(0.02f);
 		blobs[i].setMass(mass); // 1 kg
 		blobs[i].setRadius(radius);
 		blobs[i].setOrientation(0);
@@ -357,24 +357,42 @@ void BlobDemo::display()
   }
    glEnd();
 
-   int r = 1;
-   int g = 0;
-   int b = 0;
+   int r = 1.0f;
+   int g = 0.0f;
+   int b = 00.0f;
 
    for (int i = 0; i < numBlobs; i++){
-	   glColor3f(r, g, b);
+
 	   const Vector2 &p = blobs[i].getPosition();
+	   const float radius = blobs[i].getRadius();
 	   // Convert orientation to degrees and store it
 	   const float &orientation = blobs[i].getOrientation() * 180/3.1459;
 	   glPushMatrix();
-
+	   glLoadIdentity();
 	   // Position the sphere
 	   glTranslatef(p.x, p.y, 0);
-	   // Apply rotation about the z axis
 	   glRotatef(orientation, 0, 0, 1.0f);
+
+	   //glBegin(GL_POLYGON);
+	   //glVertex3f(2.0, 4.0, 0.0);
+	   //glVertex3f(8.0, 4.0, 0.0);
+	   //glVertex3f(8.0, 6.0, 0.0);
+	   //glVertex3f(2.0, 6.0, 0.0);
+	   //glEnd();
+
 	   // Draw the sphere
+	   glColor3f(r, g, b);
 	   glutSolidSphere(blobs[i].getRadius(), 12, 12);
+
+	   // Draw a black line from sphere centre to top of sphere
+	   glColor3f(0.0f, 0.0f, 0.0f);
+	   glBegin(GL_LINES);
+	   glVertex2f(p.x, p.y);
+	   glVertex2f(p.x, p.y + radius);
+	   glEnd();
+
 	   glPopMatrix();
+
 
 	   if (r != 0){
 		   r = 0;

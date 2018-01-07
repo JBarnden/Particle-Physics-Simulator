@@ -34,7 +34,7 @@ void ParticleContact::resolveVelocity(float duration)
 
     // Calculate the new separating velocity
     float newSepVelocity = -separatingVelocity * restitution;
-    float deltaVelocity = newSepVelocity - separatingVelocity;
+
 
 	// Check velocity build-up due to acceleration only.
 	// (this is to do with better handling resting particles making contact),
@@ -55,7 +55,7 @@ void ParticleContact::resolveVelocity(float duration)
 	// Doing this we're essentially applying a small change in velocity at each frame
 	// to prevent the increase in velocity that can cause particles to settle in to each other
 	// over time.
-	deltaVelocity = newSepVelocity - separatingVelocity;
+	float deltaVelocity = newSepVelocity - separatingVelocity;
 
     // We apply the change in velocity to each object in proportion to
     // their inverse mass (i.e. those with lower inverse mass [higher
@@ -88,6 +88,14 @@ void ParticleContact::resolveVelocity(float duration)
 
 void ParticleContact::resolveAngularVelocity(float duration) {
 	// Check if angular veolcity needs to be resolved.
+	if (particle[0])
+
+	// Resolve angular velocity by reversing it.
+	particle[0]->setAngularVelocity(particle[0]->getAngularVelocity()*-1);
+
+	if (particle[1]) {
+		particle[1]->setAngularVelocity(particle[1]->getAngularVelocity()*-1);
+	}
 	
 }
 
@@ -106,6 +114,15 @@ void ParticleContact::resolveInterpenetration(){
 
 	Vector2 movePerIMass = contactNormal * (penetration / totalInverseMass);
 
+	// Apply the penetration resolution.
+	//particle[0]->setPosition(particle[0]->getPosition() +
+	//	movePerIMass * particle[0]->getInverseMass());
+	//if (particle[1])
+	//{
+	//	particle[1]->setPosition(particle[1]->getPosition() +
+	//		movePerIMass * particle[1]->getInverseMass());
+	//}
+
 	particleMovements[0] = movePerIMass * particle[0]->getInverseMass();
 	// If we're not just checking against boundaries (not 2 particles involved)
 	if (particle[1]){
@@ -120,6 +137,9 @@ void ParticleContact::resolveInterpenetration(){
 	if (particle[1]){
 		particle[1]->setPosition(particle[1]->getPosition() + particleMovements[1]);
 	}
+
+	// Set penetration to 0 now we've resolved it.
+	penetration = 0;
 }
 
 ParticleContactResolver::ParticleContactResolver(unsigned iterations)
@@ -189,10 +209,6 @@ void ParticleContactResolver::resolveContacts(ParticleContact *contactArray,
 
         // Resolve this contact
         contactArray[maxIndex].resolve(duration);
-
-		// Update interpenetration
-
-
 
         iterationsUsed++;
     }
