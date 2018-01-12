@@ -1,6 +1,7 @@
 
 #include <float.h>
 #include <pcontacts.h>
+#include <iostream>
 
 
 // Contact implementation
@@ -8,6 +9,7 @@ void ParticleContact::resolve(float duration)
 {
 	// Resolve velocities for the pair of particles (or single particle)
     resolveVelocity(duration);
+	resolveAngularVelocity(duration);
 	// Resolve interpenetration for the pair of particles (or single particle)
 	resolveInterpenetration();
 }
@@ -150,7 +152,6 @@ iterations(iterations)
 
 void ParticleContactResolver::setIterations(unsigned iterations)
 {
-	// Iterations determine the number 
     ParticleContactResolver::iterations = iterations;
 }
 
@@ -212,5 +213,6 @@ void ParticleContactResolver::resolveContacts(ParticleContact *contactArray,
 
         iterationsUsed++;
     }
+	if (iterationsUsed == iterations) std::cout << "Resolver: All iterations used." << std::endl;
 
 }
