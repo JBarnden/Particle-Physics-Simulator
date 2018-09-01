@@ -40,6 +40,11 @@
          */
         Vector2 contactNormal;
 
+		/*
+		  Holds the point of the contact in world coordinates.
+		*/
+		Vector2 contactPoint;
+
         /**
          * Holds the depth of penetration at the contact.
 		   Negative value: No interpenetration
@@ -69,6 +74,11 @@
          * Handles the impulse (change of momentum) calculations for this collision.
          */
         void resolveVelocity(float duration);
+
+		/*
+		* Handles the change in angular motions for this collision based on torque
+		*/
+		void resolveAngularVelocity(float duration);
 
 		
 		//  Resolves interpenetration between the contacts

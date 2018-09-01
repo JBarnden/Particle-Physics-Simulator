@@ -15,9 +15,9 @@
 #include <iostream>
 
 // Number of platforms in environment (doesn't include border platforms)
-#define numPlatforms 0 
+#define numPlatforms 2
 // Number of blobs to add to the environment.
-#define numBlobs 6
+#define numBlobs 25
 
 
 // Definition of acceleration due to gravity
@@ -47,7 +47,10 @@ unsigned Sphere::addContact(ParticleContact* contact, unsigned limit) const{
 	Vector2 position = thisParticle->getPosition();
 
 	for (std::vector<Particle*>::const_iterator it = particles.begin(); it != particles.end(); it++){
-		if (used > limit) break;
+		if (used > limit) {
+			std::cout << "Sphere-Sphere contact generator: Contact limit used.";
+			break;
+		}
 
 		Vector2 candidatePos = (*it)->getPosition();
 		float candidateRadius = (*it)->getRadius();
@@ -66,17 +69,14 @@ unsigned Sphere::addContact(ParticleContact* contact, unsigned limit) const{
 		// If distance between centres <= sum of radii, we have a collision (face-face contact).
 		// Test 1: are spheres touching or intersecting?
 		if ((spheresPosXSqrd + spheresPosYSqrd) <= sumRadiiSquared){
-			std::cout << "Touch/intersection detected\n";
+			std::cout << "Sphere-Sphere: Touch/intersection detected\n";
 			// find vector between this object and the candidate object
 			Vector2 dist = position - candidatePos;
 			// Take magnitude of this distance (giving us the size vector between these objects)
 			float size = dist.magnitude();
 			// Get the contact normal (normal of the vector from centre of first object through centre of second)
 			Vector2 normal = dist * (((float)1.0) / size);
-
-			// Test 2: Are objects touching enough to process a collision? (early out)
-			if (size <= 0.0f || size >= radius + candidateRadius) return used;
-
+			
 			// The intersection may be noticable, populate contact structure
 			// for collision processing
 			contact->contactNormal = normal;
@@ -85,9 +85,11 @@ unsigned Sphere::addContact(ParticleContact* contact, unsigned limit) const{
 			contact->particle[1] = (*it);
 			// Calculate and populate contact structure penetration value.
 			contact->penetration = (radius + candidateRadius - size);
+			contact->contactPoint = position + dist * (float)0.5;
 
 			// Increment number of used contacts
 			used++;	
+			// Move to the next available contact object
 			contact++;
 		}
 	}
@@ -96,7 +98,7 @@ unsigned Sphere::addContact(ParticleContact* contact, unsigned limit) const{
 }
 
 /**
- * Platforms are two dimensional: lines on which the 
+ * Platforms are two dimensional lines on which 
  * particles can rest. Platforms are also contact generators for the physics.
  */
 
@@ -125,23 +127,29 @@ unsigned Platform::addContact(ParticleContact *contact,
 	unsigned used = 0;
     
 	for (int i = 0; i < numBlobs; i++){
-		if (used > limit) break;
+		if (used > limit) {
+			std::cout << "Platform contact generator: Contact limit used." << std::endl;
+			break;
+		}
 
 		// Check for penetration
+		// Get distance to particle from start point
 		Vector2 toParticle = particles[i].getPosition() - start;
 		Vector2 lineDirection = end - start;
 
+		// Get projected distance from distance to particle multiplied
+		// by the direction of the line
 		float projected = toParticle * lineDirection;
 		float platformSqLength = lineDirection.squareMagnitude();
+		// Get the squared radius of the particle to aviod using square root in calculations
 		float squareRadius = particles[i].getRadius()*particles[i].getRadius();
 
 		if (projected <= 0)
 		{
-
 			// The blob is nearest to the start point
 			if (toParticle.squareMagnitude() < squareRadius)
 			{
-				// We have a collision
+				// We have a collision, populate the contact structure accordingly.
 				contact->contactNormal = toParticle.unit();
 				contact->restitution = restitution;
 				contact->particle[0] = particles + i;
@@ -154,11 +162,14 @@ unsigned Platform::addContact(ParticleContact *contact,
 		}
 		else if (projected >= platformSqLength)
 		{
-			// The blob is nearest to the end point
+
+			// Update particle position with respect to the end point of the platform
 			toParticle = particles[i].getPosition() - end;
+			
+			// The blob is nearest to the end point
 			if (toParticle.squareMagnitude() < squareRadius)
 			{
-				// We have a collision
+				// We have a collision, populate the contact structure accordingly.
 				contact->contactNormal = toParticle.unit();
 				contact->restitution = restitution;
 				contact->particle[0] = particles + i;
@@ -170,11 +181,11 @@ unsigned Platform::addContact(ParticleContact *contact,
 		}
 		else
 		{
-			// the blob is nearest to the middle.
+			// the blob is between the start and end points.
 			float distanceToPlatform = toParticle.squareMagnitude() - projected*projected / platformSqLength;
 			if (distanceToPlatform < squareRadius)
 			{
-				// We have a collision
+				// We have a collision, populate the contact structure accordingly.
 				Vector2 closestPoint = start + lineDirection*(projected / platformSqLength);
 
 				contact->contactNormal = (particles[i].getPosition() - closestPoint).unit();
@@ -188,14 +199,34 @@ unsigned Platform::addContact(ParticleContact *contact,
 		}
 	}
 
-
     return used;
+}
+
+class NonConvexPoly : public ParticleContactGenerator
+{
+public:
+
+	virtual unsigned addContact(
+		ParticleContact *contact,
+		unsigned limit
+	) const;
+};
+
+unsigned NonConvexPoly::addContact(ParticleContact *contact,
+									unsigned limit) const 
+{
+	const static float restitution = 0.8f;
+	//const static float restitution = 1.0f;
+	unsigned used = 0;
+
+
+
+	return used;
 }
 
 
 class BlobDemo : public Application
 {
-    //Particle *blob;
 	Particle *blobs;
 
     Platform *platforms;
@@ -222,7 +253,7 @@ public:
 };
 
 // Method definitions
-BlobDemo::BlobDemo():world(6, 8)
+BlobDemo::BlobDemo():world(10, 10)
 {
 	width = 400; height = 400; 
 	nRange = 100.0;
@@ -230,12 +261,6 @@ BlobDemo::BlobDemo():world(6, 8)
     // Create the blob storage
     //blob = new Particle;
 	blobs = new Particle[numBlobs];
-
-	// Create vector of particles, with elements equal to the number of defined blobs.
-	//std::vector<Particle*> blobs;
-	//for (int i = 0; i < numBlobs; i++){
-	//	blobs.push_back(new Particle);
-	//}
 
 	// Create the platforms (4 for box + user given numPlatforms)
 	platforms = new Platform[4+numPlatforms];
@@ -257,6 +282,15 @@ BlobDemo::BlobDemo():world(6, 8)
 	platforms[3].start = platforms[2].end;
 	platforms[3].end = Vector2(numNeg, numPos);
 
+	if (numPlatforms > 0) {
+		platforms[4].start = Vector2(-80, 30);
+		platforms[4].end = Vector2(-10, 15);
+		if (numPlatforms > 1) {
+			platforms[5].start = Vector2(80, 30);
+			platforms[5].end = Vector2(10, 15);
+		}
+	}
+
 	// Register all blobs with all platform contact generators,
 	// and all contact generators with the particle world.
 	for (int i = 0; i < 4+numPlatforms; i++){
@@ -264,43 +298,39 @@ BlobDemo::BlobDemo():world(6, 8)
 		world.getContactGenerators().push_back(platforms + i);
 	}
 
-	
-	//platform->start = Vector2 ( -50.0, 0.0 );
-	//platform->end   = Vector2 (  50.0, 0.0 );
-
-    // Make sure the platform knows which particle it should collide with.
-    //platform->particle = blob;
-
 	// One sphere contact generator per blob.
 	spheres = new Sphere[numBlobs];
 
 	// Make blobs
-	float offset = 15.0f;
-
 	float mass = 1.0f;
-	float radius = 8.0f;
+	float radius = 2.0f;
+	float offset = radius;
 
 	for (int i = 0; i < numBlobs; i++){
-		blobs[i].setPosition(-80.0f+offset, 2.0f);
+		blobs[i].setPosition(-80.0f+offset, 70.0f);
 		blobs[i].setVelocity(80.0f, 0.0f);
 		// Use damping to simulate drag force (cheaper
 		// than calculating a force)
 		blobs[i].setDamping(0.8f);
+		blobs[i].setAngularDamping(0.8f);
 		// Apply acceleration due to gravity directly
 		// (This could be added as a force)
 		blobs[i].setAcceleration(Vector2::GRAVITY * 20.0f);
-		blobs[i].setMass(mass); // 1 kg
+		blobs[i].setAngularVelocity(10.0f);
+		blobs[i].setAngularAcceleration(0.0f);
+		blobs[i].setMass(mass);
 		blobs[i].setRadius(radius);
-		blobs[i].clearAccumulator();
+		blobs[i].setOrientation(0);
+		blobs[i].clearAccumulators();
 
 		// Set position and radius for this blob's contact generator
 		//spheres[i].position = blobs[i].getPosition();
 		spheres[i].radius = blobs[i].getRadius();
 
 		world.getParticles().push_back(blobs + i);
-		offset += 30.0f;
-		//mass += mass;
-		//radius += radius/2;
+		offset += 5.0f;
+		//mass += mass+mass;
+		//radius += radius;
 	}
 
 	// Register contacts between spheres
@@ -319,18 +349,6 @@ BlobDemo::BlobDemo():world(6, 8)
 		// Add this contact generator to world's contact generators.
 		world.getContactGenerators().push_back(spheres + i);
 	}
-
-
- //   // Create the blob
-	//blob->setPosition(0.0, 90.0);
-	//blob->setRadius( 5 );
- //   blob->setVelocity(0,0); 
- //   //blob->setDamping(0.9);
-	//blob->setDamping(1.0);
- //   blob->setAcceleration(Vector2::GRAVITY * 20.0f ); 
- //   blob->setMass(30.0f);
- //   blob->clearAccumulator();
- //   world.getParticles().push_back(blob);
 }
 
 
@@ -354,17 +372,43 @@ void BlobDemo::display()
   }
    glEnd();
 
-   int r = 1;
-   int g = 0;
-   int b = 0;
+   int r = 1.0f;
+   int g = 0.0f;
+   int b = 00.0f;
 
    for (int i = 0; i < numBlobs; i++){
-	   glColor3f(r, g, b);
+
 	   const Vector2 &p = blobs[i].getPosition();
+	   const float radius = blobs[i].getRadius();
+	   // Convert orientation to degrees and store it
+	   const float &orientation = blobs[i].getOrientation() * 180/3.1459;
 	   glPushMatrix();
+	   glLoadIdentity();
+	   // Position the sphere
 	   glTranslatef(p.x, p.y, 0);
+	   glRotatef(orientation, 0, 0, 1.0f);
+
+	   //glColor3f(r, g, b);
+	   //glBegin(GL_POLYGON);
+	   //glVertex3f(2.0, 4.0, 0.0);
+	   //glVertex3f(8.0, 4.0, 0.0);
+	   //glVertex3f(8.0, 6.0, 0.0);
+	   //glVertex3f(2.0, 6.0, 0.0);
+	   //glEnd();
+
+	   // Draw the sphere
+	   glColor3f(r, g, b);
 	   glutSolidSphere(blobs[i].getRadius(), 12, 12);
+
+	   // Draw a black line from sphere centre to top of sphere
+	   glColor3f(0.0f, 0.0f, 0.0f);
+	   glBegin(GL_LINES);
+	   glVertex2f(p.x, p.y);
+	   glVertex2f(p.x, p.y + radius);
+	   glEnd();
+
 	   glPopMatrix();
+
 	   if (r != 0){
 		   r = 0;
 		   g = 1;
